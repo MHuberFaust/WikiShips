@@ -20,6 +20,7 @@ import matplotlib.cm as cmx
 import numpy as np
 from collections import defaultdict
 import requests
+import regex
 
 
                
@@ -325,7 +326,67 @@ def normalizespeed(df):
 #                print(index,": ",element)
             df.ix[index, "normalized_Ship_speed"] = element
     print(count)        
-    return df           
+    return df
+  
+def normalizeDisplacement(df):
+  """normalises parsed string from Infobox about displacement and saves it in extra column
+  
+  If values in `Ship_displacement` are unclear (> 2), user is forced to decide which values to process (about 300 times).
+  
+  Args:
+      df(pd.DataFrame): pd.DataFrame with information parsed from Wikipedia infobox ships-Template
+  Returns:
+      pd.DataFrame: DataFrame consisting of results of SPARQL-query, parsed Infobox, normalised date and normalised manufacturer
+  """
+    for index, column in df.iterrows():
+        column = column['Ship_displacement']
+        try:
+            if 'convert' in column:
+                pattern = regex.compile(r'\p{N}{3,}')
+                numbers = pattern.findall(column)
+                if len(numbers) <= 2:
+                    numbers = [float(x) * 1.0160469088 for x in numbers]
+                    numbers = [int(x) for x in numbers]
+                    if len(numbers) == 2:
+                        df.ix[index, "standard_displacement"] = numbers[0]
+                        df.ix[index, "full_load_displacement"] = numbers[1]
+                    elif len(numbers) == 1:
+                        if 'full' in column:
+                            df.ix[index, "full_load_displacement"] = numbers[0]
+                        else:
+                            df.ix[index, "standard_displacement"] = numbers[0]
+                elif len(numbers) > 2:
+                    print(column)
+                    first = input("Standard displacement: ")
+                    second = input("Full load displacement: ")
+                    if 0 == 0:
+                        df.ix[index, "standard_displacement"] = float(first) * 1.0160469088
+                    else:
+                        df.ix[index, "standard_displacement"] = float(first) * 1.0160469088
+                        df.ix[index, "full_load_displacement"] = float(second) * 1.0160469088
+            else:
+                pattern = regex.compile(r'\p{N}{3,}|\p{N}+\p{P}?\p{N}*')
+                numbers = pattern.findall(column)
+                if len(numbers) == 2:
+                    df.ix[index, "standard_displacement"] = numbers[0]
+                    df.ix[index, "full_load_displacement"] = numbers[1]
+                elif len(numbers) == 1:
+                    if 'full' in column:
+                        df.ix[index, "full_load_displacement"] = numbers[0]
+                    else:
+                        df.ix[index, "standard_displacement"] = numbers[0]
+                elif len(numbers) > 2:
+                    print(column)
+                    first = input("Standard displacement: ")
+                    second = input("Full load displacement: ")
+                    if 0 == 0:
+                        df.ix[index, "standard_displacement"] = float(first)
+                    else:
+                        df.ix[index, "standard_displacement"] = float(first)
+                        df.ix[index, "full_load_displacement"] = float(second)
+        except TypeError:
+            pass
+    return df
     
 def createVisDict(df, starttime=1840, endtime=1883):
     """creates a nested Dictionary with information for further visualization 
