@@ -272,11 +272,13 @@ def normalizeLength(df):
 
         elif(ausdruck2.search(element)):
             n = ausdruck2.search(element).group(1)
+            n=float(n)*0.3048
             df.ix[index, "normalized_ship_length"] = n
 #            print("Ausdruck2: ",n)
         elif(ausdruck3.search(element)):
 #            print("Search Ausdruck3")
             n = ausdruck3.search(element).group(1)
+            n=float(n)*0.3048
             df.ix[index, "normalized_ship_length"] = n
 #            print("Ausdruck3: ",n)
         elif(ausdruck4.search(element)):
@@ -290,7 +292,40 @@ def normalizeLength(df):
             df.ix[index, "normalized_ship_length"] = element
             
     return df
-           
+
+def normalizespeed(df):
+    """normalises parsed string from Infobox about speed and saves it in extra column 
+
+    Args:
+        df(pd.DataFrame): pd.DataFrame with information parsed from Wikipedia infobox ships-Template
+        
+    Returns:
+        pd.DataFrame: DataFrame consisting of results of SPARQL-query, parsed Infobox, normalised date and normalised manufacturer
+    """
+    ausdruckkm = re.compile ("(\d+\.?\d*)\|km")
+    ausdruck = re.compile("(\d+\,?\d*)")
+    df.ix["normalized_Ship_speed"] = None
+    count = 0
+    for index, row in df.iterrows():
+        element = str(row["Ship_speed"])
+        element = re.sub("\.|\d\d\d\d", ",", element)
+        if (ausdruckkm.search(element)):
+            n = ausdruckkm.search(element).group(1)
+            n = float(n)*0.539956803
+            n = ("%.2f" % n)
+            n = re.sub("\.", ",", n)
+            df.ix[index, "normalized_Ship_speed"] = n
+            count+=1
+        elif (ausdruck.search(element)):
+            n = ausdruck.search(element).group(1)
+            df.ix[index, "normalized_Ship_speed"] = n
+            count+=1
+        else:
+#            if element != 'nan':
+#                print(index,": ",element)
+            df.ix[index, "normalized_Ship_speed"] = element
+    print(count)        
+    return df           
     
 def createVisDict(df, starttime=1840, endtime=1883):
     """creates a nested Dictionary with information for further visualization 
@@ -422,7 +457,8 @@ query = '''PREFIX wd: <http://www.wikidata.org/entity/>
 #normalizes the parsed information and the wikidata query results of manufacturer and year
 #createCSV(createdf(pd.read_csv('/Users/MHuber/Documents/WS1617/Wikiships/ships_completedtab.csv', sep='\t' ), ['Ship displacement', 'Ship length', 'Ship speed'], "Infobox ship characteristics"), '/Users/MHuber/Documents/WS1617/Wikiships/ships_lengthtonnagetab.csv' )
 #createCSV(normalizeManufacturer(normalizeDate(pd.read_csv('/Users/MHuber/Documents/WS1617/Wikiships/ships_lengthtonnagetab.csv', sep='\t'))),'/Users/MHuber/Documents/WS1617/Wikiships/manufacturers_dates_normalizedtab.csv' )
-createCSV(normalizeLength(pd.read_csv('/Users/MHuber/Documents/WS1617/Wikiships/manufacturers_dates_normalizedtab.csv', sep='\t', encoding='utf-8')), '/Users/MHuber/Documents/WS1617/Wikiships/manufacturers_dates_length_normalizedtab.csv')
+#createCSV(normalizeLength(pd.read_csv('/Users/MHuber/Documents/WS1617/Wikiships/manufacturers_dates_normalizedtab.csv', sep='\t', encoding='utf-8')), '/Users/MHuber/Documents/WS1617/Wikiships/manufacturers_dates_length_normalizedtab.csv')
+createCSV(normalizespeed(pd.read_csv('/Users/MHuber/Documents/WS1617/Wikiships/manufacturers_dates_length_normalizedtab.csv', sep='\t', encoding='utf-8')),'/Users/MHuber/Documents/WS1617/Wikiships/manufacturers_dates_length_speed_normalizedtab.csv')
 #creates a simple barplot which shows how many ships were build during a time period
 #createBarplot(createVisDict(pd.read_csv('/Users/MHuber/Documents/WS1617/Wikiships/manufacturers_dates_normalized.csv'), starttime=1600, endtime=1945))
 
