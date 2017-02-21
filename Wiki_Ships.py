@@ -156,7 +156,7 @@ def createCSV(df,filePath):
     Returns:
         
     """
-    df.to_csv(filePath)
+    df.to_csv(filePath, sep='\t', encoding='utf-8')
 
 
 def normalizeDate(df):
@@ -240,7 +240,57 @@ def normalizeManufacturer(df):
         else:
             continue
     return df
+
+def normalizeLength(df):
+    """normalises parsed string from Infobox about length and saves it in extra column 
+
+    Args:
+        df(pd.DataFrame): pd.DataFrame with information parsed from Wikipedia infobox ships-Template
         
+    Returns:
+        pd.DataFrame: DataFrame consisting of results of SPARQL-query, parsed Infobox, normalised date and normalised manufacturer
+        
+    Note: due to data of column Ship_length, "´" is not used as measure for foot. Because feet are different.
+        
+    """
+    ausdruck1 = re.compile("(\d+\.\d*)(&nbsp;| |\|)(m)")
+    ausdruck2 = re.compile("(\d+\.\d*)(&nbsp;|\.| )(ft|feet)")
+    ausdruck3 = re.compile("(\d+)(\||&nbsp;| |)(ft|feet)")
+    ausdruck4 = re.compile("(\d+)(\|| |&nbsp;|)(m|metres)")
+    
+    
+    #ausdruck4 = re.compile()
+    df.ix["normalized_ship_length"] = None
+    
+    for index, row in df.iterrows():
+        element = str(row["Ship_length"])
+#        print(ausdruck.search(element))
+        if (ausdruck1.search(element)):
+            n = ausdruck1.search(element).group(1)
+            df.ix[index, "normalized_ship_length"] = n
+#            print ("Ausdruck1: ",n)
+
+        elif(ausdruck2.search(element)):
+            n = ausdruck2.search(element).group(1)
+            df.ix[index, "normalized_ship_length"] = n
+#            print("Ausdruck2: ",n)
+        elif(ausdruck3.search(element)):
+#            print("Search Ausdruck3")
+            n = ausdruck3.search(element).group(1)
+            df.ix[index, "normalized_ship_length"] = n
+#            print("Ausdruck3: ",n)
+        elif(ausdruck4.search(element)):
+#            print("Search Ausdruck3")
+            n = ausdruck4.search(element).group(1)
+            df.ix[index, "normalized_ship_length"] = n
+#            print("Ausdruck3: ",n)  
+        else:
+            if element != 'nan':
+                print(index,": ",element)    
+            df.ix[index, "normalized_ship_length"] = element
+            
+    return df
+           
     
 def createVisDict(df, starttime=1840, endtime=1883):
     """creates a nested Dictionary with information for further visualization 
@@ -328,7 +378,7 @@ def createBarplot(visDict):
         
     plt.xlabel('Years')
     plt.ylabel('Number of ships constructed')
-    plt.title('WikiShips simple barplot')
+    plt.title('WikiShips constructed between 1600 and 1945')
     plt.legend()
     plt.show()
 
@@ -366,13 +416,15 @@ query = '''PREFIX wd: <http://www.wikidata.org/entity/>
 #to avoid writing the output you can simply nest the functions
 
 #sends a query to the wikidata-api and saves the result
-createCSV(queryreqWikidata(query), '/Users/MHuber/Documents/WS1617/Wikiships/queryviapython.csv')
+#createCSV(queryreqWikidata(query), '/Users/MHuber/Documents/WS1617/Wikiships/queryviapythontab.csv')
 #access the wikipediapage saved in the column sitelink and parses the infobox for information (defaults to Ship laid down","Ship ordered"...)
-createCSV(createdf(pd.read_csv('/Users/MHuber/Documents/WS1617/Wikiships/queryviapython.csv')), '/Users/MHuber/Documents/WS1617/Wikiships/ships_completed.csv')
+#createCSV(createdf(pd.read_csv('/Users/MHuber/Documents/WS1617/Wikiships/queryviapythontab.csv', sep='\t')), '/Users/MHuber/Documents/WS1617/Wikiships/ships_completedtab.csv')
 #normalizes the parsed information and the wikidata query results of manufacturer and year
-createCSV(normalizeManufacturer(normalizeDate(pd.read_csv('/Users/MHuber/Documents/WS1617/Wikiships/ships_completed.csv'))),'/Users/MHuber/Documents/WS1617/Wikiships/manufacturers_dates_normalized.csv' )
+#createCSV(createdf(pd.read_csv('/Users/MHuber/Documents/WS1617/Wikiships/ships_completedtab.csv', sep='\t' ), ['Ship displacement', 'Ship length', 'Ship speed'], "Infobox ship characteristics"), '/Users/MHuber/Documents/WS1617/Wikiships/ships_lengthtonnagetab.csv' )
+#createCSV(normalizeManufacturer(normalizeDate(pd.read_csv('/Users/MHuber/Documents/WS1617/Wikiships/ships_lengthtonnagetab.csv', sep='\t'))),'/Users/MHuber/Documents/WS1617/Wikiships/manufacturers_dates_normalizedtab.csv' )
+createCSV(normalizeLength(pd.read_csv('/Users/MHuber/Documents/WS1617/Wikiships/manufacturers_dates_normalizedtab.csv', sep='\t', encoding='utf-8')), '/Users/MHuber/Documents/WS1617/Wikiships/manufacturers_dates_length_normalizedtab.csv')
 #creates a simple barplot which shows how many ships were build during a time period
-createBarplot(createVisDict(pd.read_csv('/Users/MHuber/Documents/WS1617/Wikiships/manufacturers_dates_normalized.csv')))
+#createBarplot(createVisDict(pd.read_csv('/Users/MHuber/Documents/WS1617/Wikiships/manufacturers_dates_normalized.csv'), starttime=1600, endtime=1945))
 
 #the colorod Barplot looses its viability when the timespan is to long, therefore the additional argument limits the amount of data.
 #createColoredBarplot(createVisDict(pd.read_csv('/Users/MHuber/Documents/WS1617/Wikiships/manufacturers_dates_normalized.csv'), 1860, 1865))
